@@ -91,8 +91,6 @@ namespace Emmerre_Admin
             username = _user;
             userpass = _pass;
         }
-
-
         //Function to Login
         public void login()
         {
@@ -169,6 +167,7 @@ namespace Emmerre_Admin
             }
             catch (Exception) { return; }
         }
+
 
 
 
@@ -504,6 +503,7 @@ namespace Emmerre_Admin
             //Put Results to Array
             RealTimeAgentsStatsDetail = _Agenti;
         }
+        //Ascolto/intrusione agente 
         public void AscoltoAgente(string palmarino, string AgentSessionID)
         {
             string source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_campaign_ce/go_barged_in/BARGE/" + AgentSessionID + "/" + palmarino + "/" + ipaddress);
@@ -526,6 +526,7 @@ namespace Emmerre_Admin
             }
             UserInfoResults = json;
         }
+        //DETTAGLIO AGENTE---------------------
         public void AgentTalkTimeStatus(string agentID, string dadata, string adata)
         {
             webclient.Credentials = new NetworkCredential(username, userpass);
@@ -566,6 +567,58 @@ namespace Emmerre_Admin
             string[] finaldata = source.Split("\n".ToCharArray());
             AgentRecs = finaldata;
         }
+        //-------------------------------------
+        public void AddAgent(string _nome,string _full_name, string _password, string _gruppo)
+        {
+            var reqparm = new System.Collections.Specialized.NameValueCollection();
+            reqparm.Add("group1-accountNum", _gruppo);
+            reqparm.Add("group1-user", _nome);
+            reqparm.Add("group1-pass", _password);
+            reqparm.Add("group1-full_name", _full_name);
+            reqparm.Add("group1-active","Y");
+            byte[] responsebytes = webclient.UploadValues("https://" + ipaddress + "/index.php/go_user_ce/autogenuser", "POST", reqparm);
+        }
+        //Check agent format "agent001" if exist, "1" == no
+        public string CheckAgentDuplicate(string _agentid)
+        {
+            var reqparm = new System.Collections.Specialized.NameValueCollection();
+            reqparm.Add("user", _agentid);
+            byte[] responsebytes = webclient.UploadValues("https://" + ipaddress + "/index.php/go_user_ce/duplicate", "POST", reqparm);
+            string response = new ASCIIEncoding().GetString(responsebytes);
+            return response;
+        }
+        public string GetNewUserAutoCompileByGroup(string _gruppo)
+        {
+            var reqparm = new System.Collections.Specialized.NameValueCollection();
+            reqparm.Add("accountNum", _gruppo);
+            reqparm.Add("hidcount", "1");
+            reqparm.Add("txtSeats", "1");
+            reqparm.Add("skip", "skip");
+            reqparm.Add("generate_phone", "0");
+            reqparm.Add("start_phone_exten", "");
+            byte[] responsebytes = webclient.UploadValues("https://" + ipaddress + "/index.php/go_user_ce/userwizard", "POST", reqparm);
+            string response = new ASCIIEncoding().GetString(responsebytes);
+            //grab necessary data
+            int ind0 = response.IndexOf("\"right\":\"");
+            int ind1 = response.IndexOf("form>",ind0);
+            response = response.Substring(ind0 + 9, ind1 - (ind0 + 9));
+            response = response.Replace("\"", "").Replace(" ","").Replace("\\","");
+            //getnome
+            int nom0 = response.IndexOf("group1-uservalue=") + 17;
+            int nom1 = response.IndexOf("id", nom0);
+            string idagente = response.Substring(nom0, nom1 - nom0);
+            //getpass
+            int pass0 = response.IndexOf("group1-passvalue=") + 17;
+            int pass1 = response.IndexOf("id", pass0);
+            string pass = response.Substring(pass0, pass1 - pass0);
+            //getfullname
+            int fnam0 = response.IndexOf("group1-full_namevalue=") + 22;
+            int fname1 = response.IndexOf("id", fnam0);
+            string full_name = response.Substring(fnam0, fname1 - fnam0);
+
+            return idagente + "," + pass + "," + full_name;
+        }
+
 
 
         //#########################################################################################################################################
@@ -735,6 +788,7 @@ namespace Emmerre_Admin
             CampaignSegreteria = Segreteria;
             webclient.DownloadString("https://" + ipaddress + "/index.php/go_campaign_ce/go_modify_settings/" + CampagnaID + "/modify/" + NomeCampagna + "," + DialMethod + ",ADVANCE," + AutoDialLevel + "," + CampaignScript + "," + NumeroInUscita + "," + CampaignRecording + "," + CampaignSegreteria + "," + CampaignLocalTime + "," + CampaignDescription + ",,CUSTOM_" + DialPrefix + "," + CampagnaActive + "//0/////");
         }
+
 
 
 
@@ -917,8 +971,16 @@ namespace Emmerre_Admin
             reqparm.Add("action", "editlistfinal");
             Byte[] Response = webclient.UploadValues("https://" + ipaddress + "/index.php/go_list/editsubmit", "POST", reqparm);
         }
-        public void CaricaNumeri(string _filepath, string _phone_number, string _first_name, string _last_name,string _address1, string _city, string _state, string _province,string _postal_code, string _alt_phone, string _email, string _comments)
+        public void CaricaNumeri(string _filepath, string _phone_number, string _first_name, string _last_name,string _address1, string _city, string _state, string _province,string _postal_code, string _alt_phone, string _email, string _comments, string _dupcheck)
         {
+            //GET MIME TYPE
+            string mimeType = "application/unknown";
+            string ext = System.IO.Path.GetExtension(_filepath).ToLower();
+            Microsoft.Win32.RegistryKey regKey = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(ext);
+            if (regKey != null && regKey.GetValue("Content Type") != null)
+                mimeType = regKey.GetValue("Content Type").ToString();
+
+
             webclient.SetTimeout(99999);
             //Data Vars Settings
             string boundary = "---------------------------" + (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0)).TotalSeconds;
@@ -927,10 +989,10 @@ namespace Emmerre_Admin
             var fileData = webclient.Encoding.GetString(System.IO.File.ReadAllBytes(_filepath));
             string leadsloadVal = "ok";
             string tabvalselVal = "";
-            string leadfile_nameVal = @"C:\fakepath\lista pulita.xlsx";
+            string leadfile_nameVal = @"C:\fakepath\lista pulita" + ext;
             string list_id_overrideVal = LastListId;//Required
             string phone_code_overrideVal = "39";//Required
-            string dupcheckVal = "DUPLIST";//Required, check duplicates in listID
+            string dupcheckVal = _dupcheck;//Required, check duplicates in listID
             string postalgmtVal = "AREA";
             string submit_fileVal = "CARICA NUMERI";
             string vendor_lead_code_fieldVal = "-1";
@@ -966,7 +1028,7 @@ namespace Emmerre_Admin
             string leadfile_nameReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"leadfile_name\"" + lineTerm + ContentTypeBlank + leadfile_nameVal + lineTerm + "--";
             //----------
             string filedataString = fileData;
-            string fileReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"leadfile\"; filename=\"lista pulita.xlsx\"" + lineTerm + "Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\r\n\r\n" + filedataString + lineTerm + "--";
+            string fileReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"leadfile\"; filename=\"lista pulita" + ext + "\"" + lineTerm + "Content-Type: " + mimeType + "\r\n\r\n" + filedataString + lineTerm + "--";
             //----------
             string list_id_overrideReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"list_id_override\"" + lineTerm + ContentTypeBlank + list_id_overrideVal + lineTerm + "--";
             //----------
@@ -989,6 +1051,130 @@ namespace Emmerre_Admin
             string data = "--" + leadsloadReq + tabvalselReq + leadfile_nameReq + fileReq + list_id_overrideReq + phone_code_overrideReq + dupcheckReq + postalgmtReq + submit_fileReq + boundary + "--\r\n";
             var datacollection = webclient.Encoding.GetBytes(data);
             var result = webclient.UploadData(uri,"POST",datacollection);
+
+
+
+            //SECONDA FASE DEL CARICAMENTO
+            boundary = "---------------------------" + (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0)).TotalSeconds;
+            webclient.Headers.Add("Content-Type", "multipart/form-data; boundary=" + boundary);
+            //---Settings data Part
+            leadsloadReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"leadsload\"" + lineTerm + ContentTypeBlank + "okfinal" + lineTerm + "--";
+            string lead_fileReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"lead_file\"" + lineTerm + ContentTypeBlank + "/tmp/admin_listapulita.txt" + lineTerm + "--";
+            string leadfileReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"leadfile\"" + lineTerm + ContentTypeBlank + "Array" + lineTerm + "--";
+            list_id_overrideReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"list_id_override\"" + lineTerm + ContentTypeBlank + list_id_overrideVal + lineTerm + "--";
+            phone_code_overrideReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"phone_code_override\"" + lineTerm + ContentTypeBlank + phone_code_overrideVal + lineTerm + "--";
+            dupcheckReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"dupcheck\"" + lineTerm + ContentTypeBlank + dupcheckVal + lineTerm + "--";
+            leadfile_nameReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"leadfile_name\"" + lineTerm + ContentTypeBlank + leadfile_nameVal + lineTerm + "--";
+            string superfinalReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"superfinal\"" + lineTerm + ContentTypeBlank + lineTerm + "--";
+            string vendor_lead_code_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"vendor_lead_code_field\"" + lineTerm + ContentTypeBlank + vendor_lead_code_fieldVal + lineTerm + "--";
+            string source_id_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"source_id_field\"" + lineTerm + ContentTypeBlank + source_id_fieldVal + lineTerm + "--";
+            string phone_number_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"phone_number_field\"" + lineTerm + ContentTypeBlank + phone_number_fieldVal + lineTerm + "--";
+            string title_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"title_field\"" + lineTerm + ContentTypeBlank + title_fieldVal + lineTerm + "--";
+            string first_name_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"first_name_field\"" + lineTerm + ContentTypeBlank + first_name_fieldVal + lineTerm + "--";
+            string middle_initial_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"middle_initial_field\"" + lineTerm + ContentTypeBlank + middle_initial_fieldVal + lineTerm + "--";
+            string last_name_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"last_name_field\"" + lineTerm + ContentTypeBlank + last_name_fieldVal + lineTerm + "--";
+            string address1_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"address1_field\"" + lineTerm + ContentTypeBlank + address1_fieldVal + lineTerm + "--";
+            string address2_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"address2_field\"" + lineTerm + ContentTypeBlank + address2_fieldVal + lineTerm + "--";
+            string address3_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"address3_field\"" + lineTerm + ContentTypeBlank + address3_fieldVal + lineTerm + "--";
+            string city_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"city_field\"" + lineTerm + ContentTypeBlank + city_fieldVal + lineTerm + "--";
+            string state_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"state_field\"" + lineTerm + ContentTypeBlank + state_fieldVal + lineTerm + "--";
+            string province_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"province_field\"" + lineTerm + ContentTypeBlank + province_fieldVal + lineTerm + "--";
+            string postal_code_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"postal_code_field\"" + lineTerm + ContentTypeBlank + postal_code_fieldVal + lineTerm + "--";
+            string country_code_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"country_code_field\"" + lineTerm + ContentTypeBlank + country_code_fieldVal + lineTerm + "--";
+            string gender_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"gender_field\"" + lineTerm + ContentTypeBlank + gender_fieldVal + lineTerm + "--";
+            string date_of_birth_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"date_of_birth_field\"" + lineTerm + ContentTypeBlank + date_of_birth_fieldVal + lineTerm + "--";
+            string alt_phone_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"alt_phone_field\"" + lineTerm + ContentTypeBlank + alt_phone_fieldVal + lineTerm + "--";
+            string email_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"email_field\"" + lineTerm + ContentTypeBlank + email_fieldVal + lineTerm + "--";
+            string security_phrase_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"security_phrase_field\"" + lineTerm + ContentTypeBlank + security_phrase_fieldVal + lineTerm + "--";
+            string comments_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"comments_field\"" + lineTerm + ContentTypeBlank + comments_fieldVal + lineTerm + "--";
+            string rank_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"rank_field\"" + lineTerm + ContentTypeBlank + rank_fieldVal + lineTerm + "--";
+            string owner_fieldReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"owner_field\"" + lineTerm + ContentTypeBlank + owner_fieldVal + lineTerm + "--";
+            string OK_to_processReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"OK_to_process\"" + lineTerm + ContentTypeBlank + "PROCEDI" + lineTerm + "--";
+            //Complete Data string
+            data = "--" + leadsloadReq + lead_fileReq + leadfileReq + list_id_overrideReq + phone_code_overrideReq + dupcheckReq + leadfile_nameReq + superfinalReq + vendor_lead_code_fieldReq + source_id_fieldReq + phone_number_fieldReq + title_fieldReq + first_name_fieldReq + middle_initial_fieldReq + last_name_fieldReq + address1_fieldReq + address2_fieldReq + address3_fieldReq + city_fieldReq + state_fieldReq + province_fieldReq + postal_code_fieldReq + country_code_fieldReq + gender_fieldReq + date_of_birth_fieldReq + alt_phone_fieldReq + email_fieldReq + security_phrase_fieldReq + comments_fieldReq + rank_fieldReq + owner_fieldReq + OK_to_processReq + boundary + "--\r\n";
+            datacollection = webclient.Encoding.GetBytes(data);
+            result = webclient.UploadData(uri, "POST", datacollection);
+            webclient.SetTimeout(0);
+        }
+        public void CaricaNumeri(string _listid, string _filepath, string _phone_number, string _first_name, string _last_name, string _address1, string _city, string _state, string _province, string _postal_code, string _alt_phone, string _email, string _comments,string _dupcheck)
+        {
+            //GET MIME TYPE
+            string mimeType = "application/unknown";
+            string ext = System.IO.Path.GetExtension(_filepath).ToLower();
+            Microsoft.Win32.RegistryKey regKey = Microsoft.Win32.Registry.ClassesRoot.OpenSubKey(ext);
+            if (regKey != null && regKey.GetValue("Content Type") != null)
+                mimeType = regKey.GetValue("Content Type").ToString();
+
+            webclient.SetTimeout(99999);
+            //Data Vars Settings
+            string boundary = "---------------------------" + (long)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0)).TotalSeconds;
+            string ContentTypeBlank = "\r\n";
+            string lineTerm = "\r\n";
+            var fileData = webclient.Encoding.GetString(System.IO.File.ReadAllBytes(_filepath));
+            string leadsloadVal = "ok";
+            string tabvalselVal = "";
+            string leadfile_nameVal = @"C:\fakepath\lista pulita" + ext;
+            string list_id_overrideVal = _listid;//Required
+            string phone_code_overrideVal = "39";//Required
+            string dupcheckVal = _dupcheck;//Required, check duplicates in listID
+            string postalgmtVal = "AREA";
+            string submit_fileVal = "CARICA NUMERI";
+            string vendor_lead_code_fieldVal = "-1";
+            string source_id_fieldVal = "-1";
+            string phone_number_fieldVal = _phone_number;
+            string title_fieldVal = "-1";
+            string first_name_fieldVal = _first_name;
+            string middle_initial_fieldVal = "-1";
+            string last_name_fieldVal = _last_name;
+            string address1_fieldVal = _address1;
+            string address2_fieldVal = "-1";
+            string address3_fieldVal = "-1";
+            string city_fieldVal = _city;
+            string state_fieldVal = _state;
+            string province_fieldVal = _province;
+            string postal_code_fieldVal = _postal_code;
+            string country_code_fieldVal = "-1";
+            string gender_fieldVal = "-1";
+            string date_of_birth_fieldVal = "-1";
+            string alt_phone_fieldVal = _alt_phone;
+            string email_fieldVal = _email;
+            string security_phrase_fieldVal = "-1";
+            string comments_fieldVal = _comments;
+            string rank_fieldVal = "-1";
+            string owner_fieldVal = "-1";
+
+
+            //Data to send
+            string leadsloadReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"leadsload\"" + lineTerm + ContentTypeBlank + leadsloadVal + lineTerm + "--";
+            //----------
+            string tabvalselReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"tabvalsel\"" + lineTerm + ContentTypeBlank + tabvalselVal + lineTerm + "--";
+            //----------
+            string leadfile_nameReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"leadfile_name\"" + lineTerm + ContentTypeBlank + leadfile_nameVal + lineTerm + "--";
+            //----------
+            string filedataString = fileData;
+            string fileReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"leadfile\"; filename=\"lista pulita" + ext + "\"" + lineTerm + "Content-Type: " + mimeType + "\r\n\r\n" + filedataString + lineTerm + "--";
+            //----------
+            string list_id_overrideReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"list_id_override\"" + lineTerm + ContentTypeBlank + list_id_overrideVal + lineTerm + "--";
+            //----------
+            string phone_code_overrideReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"phone_code_override\"" + lineTerm + ContentTypeBlank + phone_code_overrideVal + lineTerm + "--";
+            //----------
+            string dupcheckReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"dupcheck\"" + lineTerm + ContentTypeBlank + dupcheckVal + lineTerm + "--";
+            //----------
+            string postalgmtReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"postalgmt\"" + lineTerm + ContentTypeBlank + postalgmtVal + lineTerm + "--";
+            //----------
+            string submit_fileReq = boundary + lineTerm + "Content-Disposition: form-data; name=\"submit_file\"" + lineTerm + ContentTypeBlank + submit_fileVal + lineTerm + "--";
+
+
+            //Setting Header Request
+            webclient.Headers.Add("Accept", "*/*");
+            webclient.Headers.Add("Accept-Language", "it-IT,it;q=0.8,en-US;q=0.5,en;q=0.3");
+            webclient.Headers.Add("Accept-Encoding", "gzip, deflate");
+            webclient.Headers.Add("Content-Type", "multipart/form-data; boundary=" + boundary);
+            webclient.Headers.Add("X-Requested-With", "XMLHttpRequest");
+            Uri uri = new Uri("http://" + ipaddress + "/go_list");
+            string data = "--" + leadsloadReq + tabvalselReq + leadfile_nameReq + fileReq + list_id_overrideReq + phone_code_overrideReq + dupcheckReq + postalgmtReq + submit_fileReq + boundary + "--\r\n";
+            var datacollection = webclient.Encoding.GetBytes(data);
+            var result = webclient.UploadData(uri, "POST", datacollection);
 
 
 
@@ -1179,6 +1365,15 @@ namespace Emmerre_Admin
                 SearchResults = source.Split(";".ToCharArray());
             }
         }
+        public void CancellaLista(string _listid)
+        {
+            webclient.Credentials = new NetworkCredential(username, userpass);
+            var reqparm = new System.Collections.Specialized.NameValueCollection();
+            reqparm.Add("listid_delete", _listid);
+            reqparm.Add("action", "deletelist");
+            Byte[] responsebytes = webclient.UploadValues("https://" + ipaddress + "/index.php/go_list/deletesubmit", "POST", reqparm);
+        }
+
 
 
 
@@ -1231,6 +1426,8 @@ namespace Emmerre_Admin
             Byte[] Response = webclient.UploadValues("http://" + ipaddress + "/_vicidial_/lead_tools.php", "POST", reqparm);
             string data = ASCIIEncoding.ASCII.GetString(Response);
         }
+
+
 
 
 
