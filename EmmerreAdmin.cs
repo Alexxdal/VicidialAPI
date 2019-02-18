@@ -22,9 +22,9 @@ namespace Emmerre_Admin
         public String[] Campagne = new String[150];//Campagne ID and Name STD;Campagna unica
         public String[] CampagneDettaglio = new String[150];//campagnaID;campagnaNome;campagnaStato;campagnaDialMode;
         public String[] CampagnaSettings = new String[150];//jsondata.Split(",".ToCharArray());  MOLTO DETTAGLIATO
-        public Series PointSeries = new Series();//SERIE PUNTI GRAFICO
-        public String[] ReportAgentDetail = new String[150]; //GetAgentStatusDetail();
-        public String[] Lists = new String[200];//ListID;ListName;ListStatus;ListLastCall;ListLenght;ListCampaign
+        public Series[] PointSeries = new Series[500];//SERIE PUNTI GRAFICO
+        public String[] ReportAgentDetail = new String[250]; //GetAgentStatusDetail();
+        public String[] Lists = new String[500];//ListID;ListName;ListStatus;ListLastCall;ListLenght;ListCampaign
         public String ListDetail;
         public String[] ExcelFirstRow = new String[30];
         public String[] Agents = new String[400];
@@ -74,9 +74,16 @@ namespace Emmerre_Admin
         //Variabili Liste
         public String LastListId = String.Empty;
         public String[] ListEsitiArr;
-
-
-
+        //VOIP CARRIERS
+        public String[] Carriers = new String[20];
+        public String CarrierDetail;
+        //REPORT E STATISTICHE
+        public string RS_chiamatetotali = string.Empty;
+        public string RS_agentitotale = string.Empty;
+        public string RS_conteggio_numeri = string.Empty;
+        public string[] PieDataArray = new string[2000];
+        public string RS_DettaglioAgente1 = string.Empty;
+        public string RS_DettaglioAgentiTime = string.Empty;
 
         //Costruttore
         /// <summary>
@@ -147,15 +154,17 @@ namespace Emmerre_Admin
             int bal1 = source.LastIndexOf("\">", bal0);
             Balance = source.Substring(bal1 + 2, bal0 - (bal1 + 2));
         }
+
+        //##################### REPORT e STATISTICHE ################
         //Return Points Series for Chart
-        public void GetChartData(String daData, String aData, String campagna)
+        public void GetChartData(string daData, string aData, string campagna)
         {
             try
             {
                 //Get Points Data
                 webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_reports_output/stats/" + daData + "/" + aData + "/" + campagna + "/daily/");
                 //Get Points Data JSON
-                String pointsData = webclient.DownloadString("https://" + ipaddress + "/data/stats-daily-ADMIN.json");
+                string pointsData = webclient.DownloadString("https://" + ipaddress + "/data/stats-daily-ADMIN.json");
                 int index1 = pointsData.IndexOf("[[");
                 int index2 = pointsData.IndexOf("]]");
                 pointsData = pointsData.Substring(index1 + 2, index2 - (index1 + 2)).Replace("],[", "\n").Replace("\"", "");
@@ -163,15 +172,307 @@ namespace Emmerre_Admin
                 //Settings DataPointsCollection
                 for (int i = 0; i < PointsArray.Length; i++)
                 {
-                    String[] values = PointsArray[i].Split(",".ToCharArray());
-                    PointSeries.Points.AddXY(Convert.ToInt32(values[0]), Convert.ToInt32(values[1]));
+                    string[] values = PointsArray[i].Split(",".ToCharArray());
+                    PointSeries[0].Points.AddXY(Convert.ToInt32(values[0]), Convert.ToInt32(values[1]));
                 }
             }
             catch (Exception) { return; }
         }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="daData"></param>
+        /// <param name="aData"></param>
+        /// <param name="campagna"></param>
+        /// <param name="_type">daily, weekly, monthly</param>
+        public void GetChartData(string daData, string aData, string campagna, string _type)
+        {
+            string[] Days = { "Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom" };
+            try
+            {
+                //Get Points Data
+                string source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_reports_output/stats/" + daData + "/" + aData + "/" + campagna + "/" + _type + "/");
+
+                //Get Points Data JSON
+                string pointsData = webclient.DownloadString("https://" + ipaddress + "/data/stats-" + _type + "-ADMIN.json");
+                pointsData = pointsData.Remove(0, pointsData.IndexOf("label") + 7).Replace("label\":", "\n");
+
+                string[] MoreDaysDatas = pointsData.Split("\n".ToCharArray());
+                if (MoreDaysDatas.Length > 1)
+                {
+                    for (int a = 0; a < MoreDaysDatas.Length; a++)
+                    {
+                        int indx1 = MoreDaysDatas[a].IndexOf("[[");
+                        int indx2 = MoreDaysDatas[a].IndexOf("]]");
+                        MoreDaysDatas[a] = MoreDaysDatas[a].Substring(indx1 + 2, indx2 - (indx1 + 2)).Replace("],[", "\n").Replace("\"", "");
+                        string[] tmp = MoreDaysDatas[a].Split("\n".ToCharArray());
+
+                        PointSeries[a] = new Series();
+                        for (int i = 0; i < tmp.Length; i++)
+                        {
+                            string[] values = tmp[i].Split(",".ToCharArray());
+                            PointSeries[a].Points.AddXY(Convert.ToInt32(values[0]), Convert.ToInt32(values[1]));
+                        }
+                    }
+                }
+                else
+                {
+                    if (pointsData.Contains("{\"data\":[\"\"]}}")) { return; }
+                    int index1 = pointsData.IndexOf("[[");
+                    int index2 = pointsData.IndexOf("]]");
+                    pointsData = pointsData.Substring(index1 + 2, index2 - (index1 + 2)).Replace("],[", "\n").Replace("\"", "");
+                    string[] PointsArray = pointsData.Split("\n".ToCharArray());
+                    //Settings DataPointsCollection
+                    if (_type == "weekly")
+                    {
+                        PointSeries[0] = new Series();
+                        for (int i = 0; i < PointsArray.Length; i++)
+                        {
+                            string[] values = PointsArray[i].Split(",".ToCharArray());
+                            PointSeries[0].Points.AddXY(Days[i], Convert.ToInt32(values[1]));
+                        }
+                    }
+                    if (_type == "daily")
+                    {
+                        PointSeries[0] = new Series();
+                        PointSeries[0].BorderWidth = 2;
+                        for (int i = 0; i < PointsArray.Length; i++)
+                        {
+                            string[] values = PointsArray[i].Split(",".ToCharArray());
+                            PointSeries[0].Points.AddXY(Convert.ToInt32(values[0]), Convert.ToInt32(values[1]));
+                        }
+                    }
+                }
+
+                //Setting other datas from source 
+                //Statistiche Chiamate
+                //Get CHIAMATE TOTALI
+                int count = 0;
+                int ct0 = source.IndexOf("<a style=\"cursor:pointer\" class=\"\">", count);
+                int ct1 = source.IndexOf("</a></td>", ct0);
+                RS_chiamatetotali = source.Substring(ct0 + 35, ct1 - (ct0 + 35));
+                count = ct0 + 200;
+                ct0 = source.IndexOf("<a style=\"cursor:pointer\" class=\"\">", count);
+                ct1 = source.IndexOf("</a></td>", ct0);
+                RS_agentitotale = source.Substring(ct0 + 35, ct1 - (ct0 + 35));
+                count = ct0 + 10;
+                ct0 = source.IndexOf("<a style=\"cursor:pointer\" class=\"\">", count);
+                ct1 = source.IndexOf("</a></td>", ct0);
+                RS_conteggio_numeri = source.Substring(ct0 + 35, ct1 - (ct0 + 35));
+
+                //GET PIE CHART DATAS
+                int pcd0 = source.IndexOf("valign=\"top\">-->");
+                int pcd1 = source.IndexOf("</td></tr><!--", pcd0);
+                string pieDatas = source.Substring(pcd0 + 16, pcd1 - (pcd0 + 16));
+                pieDatas = pieDatas.Replace("<span style=\"font-size:12px;font-style:italic;\">", "");
+                pieDatas = pieDatas.Replace("</span><br /><span style=\"font-size:12px;\">", ";");
+                pieDatas = pieDatas.Replace("<a style=\"cursor:pointer\" class=\"", "\n");
+                pieDatas = pieDatas.Replace("\r\n        <tr><td style=\"width:100px;padding-left:50px;height:10px;\" class=\"c\">\n", "");
+                pieDatas = pieDatas.Replace("</a></td><td style=\"width:100px;\" nowrap=\"nowrap\" class=\"r\">\n", ";");
+                pieDatas = pieDatas.Replace("</span></a></td></tr><tr><td style=\"width:100px;padding-left:50px;height:10px;\" class=\"c\">", "");
+                pieDatas = pieDatas.Replace("</span></a></td></tr><tr><td style=\"width:100px;padding-left:50px;height:10px;\" class=\"c\">", "");
+                pieDatas = pieDatas.Replace("</span></a></td></tr><tr class=\"hiddenStatus\" style=\"display: none\"><td style=\"width:100px;padding-left:50px;height:10px;\" class=\"c\">", "");
+                pieDatas = pieDatas.Replace("</span></a>", "").Replace("\">", ";");
+                //Make array
+                PieDataArray = pieDatas.Split("\n".ToCharArray());
+            }
+            catch (Exception) { return; }            
+        }
+        public void RS_GetDettaglioAgente(string daData, string aData, string campagna, string _type)
+        {
+            string source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_reports_output/agent_detail/" + daData + "/" + aData + "/" + campagna + "/" + _type + "/");
+            //Extract data
+            int da0 = source.IndexOf("Cliente&nbsp; </strong></div></td>");
+            int da1 = source.IndexOf("</table>", da0);
+            string extracted = source.Substring(da0 + 36, da1 - (da0 + 36));
+            extracted = extracted.Replace("\t", "").Replace("  ", "");
+            extracted = extracted.Replace("\r\n<!--<td style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"right\" class=\"style4\">&nbsp; 0:00 &nbsp;</div></td>-->", "");
+            extracted = extracted.Replace("</tr>", "").Replace("<td style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"left\" class=\"style4\">&nbsp; ", "");
+            extracted = extracted.Replace("<td style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"right\" class=\"style4\">&nbsp; ", "");
+            extracted = extracted.Replace("<td style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"left\" class=\"style4\">&nbsp; <strong>", "");
+            extracted = extracted.Replace("<td style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"right\" class=\"style4\">&nbsp; ", "").Replace(" &nbsp;","").Replace("&nbsp;","").Replace("</strong>","");
+            int tmp0 = extracted.IndexOf(">", 0);
+            extracted = extracted.Remove(0, tmp0 + 2);
+            extracted = extracted.Replace("</td>", "").Replace("\n","").Replace("\r\n","").Replace("\r","");
+            extracted = extracted.Replace("<tr style=\"background-color:#EFFBEF;\">", ";").Replace("<tr style=\"background-color:#E0F8E0;\">", ";").Replace("<tr style=\"background-color:#FFFFFF\">", ";");
+            extracted = extracted.Replace("</div>", "@");
+            if(extracted.Contains("Nessun Agente trovato"))
+            {
+                RS_DettaglioAgente1 = "Nessun Agente trovato.@";
+            }
+            else
+            {
+                RS_DettaglioAgente1 = extracted;
+                //Get Agent Time Detail
+                int at0 = source.IndexOf("<td><div align=\"center\" class=\"style1 style3\" nowrap>", da1);
+                int at1 = source.IndexOf("</table>", at0);
+                string Timedetail = source.Substring(at0 + 53, at1 - (at0 + 53));
+                Timedetail = Timedetail.Replace("\t", "").Replace("  ", "").Replace(" &nbsp;", "").Replace("&nbsp; ", "");
+                Timedetail = Timedetail.Replace("<td style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"left\" class=\"style4\">", "");
+                Timedetail = Timedetail.Replace("<td style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"right\" class=\"style4\">", "").Replace("</strong>", "").Replace("<strong>", "");
+                Timedetail = Timedetail.Replace("<td><div align=\"center\" class=\"style4\" nowrap>", "");
+                Timedetail = Timedetail.Replace("<td style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"left\" class=\"style4\">", "");
+                Timedetail = Timedetail.Replace("\t", "").Replace("\n", "").Replace("\r","").Replace("&nbsp;","").Replace("</div></td>",";");
+                Timedetail = Timedetail.Replace("</tr><tr style=\"background-color:#E0F8E0;\">", "@");
+                Timedetail = Timedetail.Replace("</tr><tr style=\"background-color:#FFFFFF;\">", "@");
+                Timedetail = Timedetail.Replace("</tr><tr style=\"background-color:#EFFBEF;\">", "@");
+                Timedetail = Timedetail.Replace(";@", "@").Replace(";</tr>", "");
+                RS_DettaglioAgentiTime = Timedetail;
+            }
+        }
+        public void RS_GetPerformanceAgente(string daData, string aData, string _campagna, string _type)
+        {
+            string source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_reports_output/agent_pdetail/" + daData + "/" + aData + "/" + _campagna + "/" + _type + "/");
+        }
 
 
 
+        //##################### VOIP CARRIERS ################
+        public void GetVoipCarriers()
+        {
+            String source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_carriers_ce/go_update_carrier_list/");
+            int table0 = source.IndexOf("<tbody>");
+            int table1 = source.IndexOf("</tbody>");
+            source = source.Substring(table0 + 7, table1 - (table0 + 7));
+            //diomerda
+            source = source.Replace("<tr style='background-color:#E0F8E0;'>", "");
+            source = source.Replace("<tr style='background-color:#EFFBEF;'>", "");
+            source = source.Replace("<td style='border-top:#D0D0D0 dashed 1px;'>&nbsp;<a onclick=\"modify('", "");
+            source = source.Replace("')\">", ";");
+            source = source.Replace("</a></td><td style='border-top:#D0D0D0 dashed 1px;'>&nbsp", "");
+            source = source.Replace("</td><td style='border-top:#D0D0D0 dashed 1px;'>&nbsp", "");
+            source = source.Replace("</td><td style='border-top:#D0D0D0 dashed 1px;cursor:pointer;' class='toolTip' title='", ";");
+            source = source.Replace("'>&nbsp", "");
+            source = source.Replace("</td><td style='border-top:#D0D0D0 dashed 1px;color:green;font-weight:bold;width:10%;", "");
+            source = source.Replace("</td><td style='border-top", ";");
+            source = source.Replace("</tr>", "§");
+            source = source.Replace("\r\n", "");
+            source = source.Replace(";:#D0D0D0 dashed 1px;white-space:nowrap;width:6%;", "");
+            source = source.Replace("&nbsp;&nbsp;&nbsp;", ";");
+            source = source.Replace(":#D0D0D0 dashed 1px;color:#F00;font-weight:bold;width:10%;;", "");
+            string[] diocane = source.Split("§".ToCharArray());
+            
+            for(int i = 0; i < diocane.Length - 1; i++)
+            {
+                string[] split = diocane[i].Split(";".ToCharArray());
+                Carriers[i] = split[0] + ";" + split[3] + ";" + split[4] + ";" + split[7];
+            }
+        }
+        //Get Carrier detail
+        public void GetCarrierDetail(string carrier_id)
+        {
+            webclient.Credentials = new NetworkCredential(username, userpass);
+            String source = webclient.DownloadString("https://" + ipaddress + "/_vicidial_/admin.php?ADD=341111111111&carrier_id=" + carrier_id);
+            string account_entry = "";
+            string active = "";
+            string ADD = "341111111111";//441111111111
+            string carrier_description = ""; //3
+            string carrier_name = "";//4
+            string dialplan_entry = "";//5
+            string globals_string = "";//6
+            string protocol = "";//7
+            string registration_string = "";//8
+            string server_ip = "";//9
+            string template_id = "";//10
+            string user_group = "";//11
+            ///// ACCOUNT_ENTRY //////
+            int ae0 = source.IndexOf("<TEXTAREA NAME=account_entry ROWS=10 COLS=70>");
+            int ae1 = source.IndexOf("</TEXTAREA>", ae0);
+            account_entry = source.Substring(ae0 + 45, ae1 - (ae0 + 45));
+            ///// ACTIVE ////////////
+            int ac0 = source.IndexOf("<option SELECTED>Y</option></select>");
+            if(ac0 == -1) { active = "N"; } else { active = "Y"; }
+            ///////// CARRIER DESCRIPTION
+            int cd0 = source.IndexOf("carrier_description size=70 maxlength=255 value=\"");
+            int cd1 = source.IndexOf("\">",cd0);
+            carrier_description = source.Substring(cd0 + 49, cd1 - (cd0 + 49));
+            ////// CARRIER NAME ///////
+            int cn0 = source.IndexOf("carrier_name size=40 maxlength=50 value=\"");
+            int cn1 = source.IndexOf("\">", cn0);
+            carrier_name = source.Substring(cn0 + 41, cn1 - (cn0 + 41));
+            ///////// DIALPLAN ENTRY ////
+            int dp0 = source.IndexOf("<TEXTAREA NAME=dialplan_entry ROWS=10 COLS=70>");
+            int dp1 = source.IndexOf("</TEXTAREA>", dp0);
+            dialplan_entry = source.Substring(dp0 + 46, dp1 - (dp0 + 46));
+            ///// globals string ///// 
+            int gs0 = source.IndexOf("name=globals_string size=50 maxlength=255 value=\"");
+            int gs1 = source.IndexOf("\">", gs0);
+            globals_string = source.Substring(gs0 + 49, gs1 - (gs0 + 49));
+            //////// PROTOCOL ///////
+            int pt00 = source.IndexOf("Protocol: </td><td align=left><select size=1 name=protocol><option>");
+            int pt0 = source.IndexOf("</option><option SELECTED>", pt00);
+            int pt1 = source.IndexOf("</option></select>", pt0);
+            protocol = source.Substring(pt0 + 26, pt1 - (pt0 + 26));
+            ////// REGISTRATION STRING //////
+            int rs0 = source.IndexOf("name=registration_string size=50 maxlength=255 value=\"");
+            int rs1 = source.IndexOf("\">", rs0);
+            registration_string = source.Substring(rs0 + 54, rs1 - (rs0 + 54));
+            ///// SERVER IP ///////
+            int si00 = source.IndexOf("Server IP: </td><td align=left><select size=1 name=server_ip>");
+            int si0 = source.IndexOf("<option SELECTED>", si00);
+            int si1 = source.IndexOf("</option>", si0);
+            server_ip = source.Substring(si0 + 17, si1 - (si0 + 17));
+            /////  template id //////
+            int ti00 = source.IndexOf("Template ID</a>: </td><td align=left><select size=1 name=template_id>");
+            int ti0 = source.IndexOf("<option SELECTED>", ti00);
+            int ti1 = source.IndexOf("</option>", ti0);
+            template_id = source.Substring(ti0 + 17, ti1 - (ti0 + 17));
+            ////// USER GROUP //////
+            int ug00 = source.IndexOf("</td><td align=left><select size=1 name=user_group>");
+            int ug0 = source.IndexOf("<option SELECTED value=\"",ug00);
+            int ug1 = source.IndexOf("\">",ug0);
+            user_group = source.Substring(ug0 + 24, ug1 - (ug0 + 24));
+            //////
+            CarrierDetail = account_entry + ";" + active + ";" + ADD + ";" + carrier_description + ";" + carrier_name + ";" + dialplan_entry + ";" + globals_string + ";" + protocol + ";" + registration_string + ";" + server_ip + ";" + template_id + ";" + user_group; 
+        }
+        public void AttivaCarrier(string carrier_id)
+        {
+            this.GetCarrierDetail(carrier_id);
+            string[] carrier = CarrierDetail.Split(";".ToCharArray());
+            webclient.Credentials = new NetworkCredential(username, userpass);
+            var reqparm = new NameValueCollection
+            {
+                { "account_entry", carrier[0] },
+                { "active", "Y" },
+                { "ADD", "441111111111" },
+                { "carrier_description", carrier[3] },
+                { "carrier_id" , carrier_id },
+                { "carrier_name" ,carrier[4] },
+                { "dialplan_entry", carrier[5] },
+                { "globals_string", carrier[6] },
+                { "protocol" , carrier[7] },
+                { "registration_string", carrier[8] },
+                { "server_ip", carrier[9] },
+                { "submit", "SUBMIT" },
+                { "template_id",carrier[10] },
+                { "user_group", carrier[11] }
+            };
+            String source = ASCIIEncoding.ASCII.GetString(webclient.UploadValues("https://" + ipaddress + "/_vicidial_/admin.php", "POST", reqparm));
+        }
+        public void DisattivaCarrier(string carrier_id)
+        {
+            this.GetCarrierDetail(carrier_id);
+            string[] carrier = CarrierDetail.Split(";".ToCharArray());
+            webclient.Credentials = new NetworkCredential(username, userpass);
+            var reqparm = new System.Collections.Specialized.NameValueCollection
+            {
+                { "account_entry", carrier[0] },
+                { "active", "N" },
+                { "ADD", "441111111111" },
+                { "carrier_description", carrier[3] },
+                { "carrier_id" , carrier_id },
+                { "carrier_name" ,carrier[4] },
+                { "dialplan_entry", carrier[5]},
+                { "globals_string", carrier[6] },
+                { "protocol" , carrier[7] },
+                { "registration_string", carrier[8] },
+                { "server_ip", carrier[9] },
+                { "submit", "SUBMIT" },
+                { "template_id",carrier[10] },
+                { "user_group", carrier[11] }
+            };
+            String source = ASCIIEncoding.ASCII.GetString(webclient.UploadValues("https://" + ipaddress + "/_vicidial_/admin.php", "POST", reqparm));
+        }
 
 
 
@@ -849,7 +1150,13 @@ namespace Emmerre_Admin
                         String ListCampaign = Liste.Substring(listcam0 + 44, listcam1 - (listcam0 + 44));
 
                         //Set Array with results
-                        Lists[resultindex] = ListID + ";" + ListName + ";" + ListStatus + ";" + ListLastCall + ";" + ListLenght + ";" + ListCampaign;
+                        GetListEsiti(ListID);
+                        //Load results
+                        string[] esiti = ListEsitiArr;
+                        int indexfinal = esiti.Length - 2;
+                        string RemainNumbers = esiti[indexfinal].Split(";".ToCharArray())[2];
+
+                        Lists[resultindex] = ListID + ";" + ListName + ";" + ListStatus + ";" + ListLastCall + ";" + ListLenght + ";" + ListCampaign + ";" + RemainNumbers;
                     }
                     resultindex++;
                 }
@@ -1384,7 +1691,6 @@ namespace Emmerre_Admin
 
 
 
-
         //#########################################################################################################################################
         //##############################################           GESTIONE ESITI             #####################################################
         public void MoveLeads(String _listIDFrom, String _ListIDTo, String _moveStatus)
@@ -1437,8 +1743,6 @@ namespace Emmerre_Admin
             Byte[] Response = webclient.UploadValues("http://" + ipaddress + "/_vicidial_/lead_tools.php", "POST", reqparm);
             String data = ASCIIEncoding.ASCII.GetString(Response);
         }
-
-
 
 
 
