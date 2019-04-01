@@ -24,7 +24,7 @@ namespace Emmerre_Admin
         public String[] CampagnaSettings = new String[150];//jsondata.Split(",".ToCharArray());  MOLTO DETTAGLIATO
         public Series[] PointSeries = new Series[500];//SERIE PUNTI GRAFICO
         public String[] ReportAgentDetail = new String[250]; //GetAgentStatusDetail();
-        public String[] Lists = new String[500];//ListID;ListName;ListStatus;ListLastCall;ListLenght;ListCampaign
+        public String[] Lists = new String[2000];//ListID;ListName;ListStatus;ListLastCall;ListLenght;ListCampaign
         public String ListDetail;
         public String[] ExcelFirstRow = new String[30];
         public String[] Agents = new String[400];
@@ -84,6 +84,12 @@ namespace Emmerre_Admin
         public string[] PieDataArray = new string[2000];
         public string RS_DettaglioAgente1 = string.Empty;
         public string RS_DettaglioAgentiTime = string.Empty;
+        public string DettaglioPerformanceAgente1 = string.Empty;
+        public string DettaglioPerformanceAgente2 = string.Empty;
+        public string DettaglioPerformanceAgente3 = string.Empty;
+        public string DettaglioPerformanceAgente4 = string.Empty;
+        public string TracciatoVendite1 = string.Empty;
+        public string ListaEsiti = string.Empty;
 
         //Costruttore
         /// <summary>
@@ -115,8 +121,19 @@ namespace Emmerre_Admin
         //VenditeTotali; VenditeInIngresso; VenditeInUscita
         public void GetSalesToday()
         {
-            String source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_dashboard_sales_today").Replace("\r", "").Replace("\t", "");
-            String[] sourceArray = source.Split("\n".ToCharArray());
+            CookieAwareWebClient tmpClient = new CookieAwareWebClient();
+            tmpClient.BaseAddress = @"https://" + ipaddress;
+            // establish login data
+            var loginData = new NameValueCollection
+            {
+                { "user_name", username },
+                { "user_pass", userpass }
+            };
+            // begin login
+            tmpClient.UploadValues("/index.php/go_login/validate_credentials", "POST", loginData);
+
+            string source = tmpClient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_dashboard_sales_today").Replace("\r", "").Replace("\t", "");
+            string[] sourceArray = source.Split("\n".ToCharArray());
             VenditeTotali = sourceArray[5].Replace("<td class=\"b\"><a class=\"cur_hand\">", "").Replace("</a></td>", "");
             VenditeInIngresso = sourceArray[9].Replace("<td class=\"c\"><a class=\"cur_hand\">", "").Replace("</a></td>", "");
             VenditeInUscita = sourceArray[13].Replace("<td class=\"c\"><a class=\"cur_hand\">", "").Replace("</a></td>", "");
@@ -124,9 +141,20 @@ namespace Emmerre_Admin
         //Get info to calls
         public void GetStatistiche()
         {
-            String source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_dashboard_calls_today").Replace("\t", "");
+            CookieAwareWebClient tmpClient = new CookieAwareWebClient();
+            tmpClient.BaseAddress = @"https://" + ipaddress;
+            // establish login data
+            var loginData = new NameValueCollection
+            {
+                { "user_name", username },
+                { "user_pass", userpass }
+            };
+            // begin login
+            tmpClient.UploadValues("/index.php/go_login/validate_credentials", "POST", loginData);
+
+            string source = tmpClient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_dashboard_calls_today").Replace("\t", "");
             //AgentiInChiamata
-            String[] sourcearray = source.Split("\n".ToCharArray());
+            string[] sourcearray = source.Split("\n".ToCharArray());
             ChiamateTotali = sourcearray[63].Replace("<td class=\"c dropTD\"><div class=\"tdcon1\"><div class=\"tdcon2\"><a class=\"toolTip\" style=\"cursor:pointer\" onclick=\"callMonitoring()\" title=\"Click to see calls being placed\">", "").Replace("</a></div></div></td>", "");
             ChiamateInAttesa = sourcearray[20].Replace("<td class=\"o dropTD\"><div class=\"tdcon1\"><div class=\"tdcon2\"><a class=\"toolTip\" style=\"cursor:pointer\" onclick=\"callMonitoring()\" title=\"Click to see calls being placed\">", "").Replace("</a></div></div></td>", "");
             CodaChiamateInUscita = sourcearray[27].Replace("<td class=\"c dropTD\"><div class=\"tdcon1\"><div class=\"tdcon2\"><a class=\"toolTip\" style=\"cursor:pointer\" onclick=\"callMonitoring()\" title=\"Click to see calls being placed\">", "").Replace("</a></div></div></td>", "");
@@ -134,13 +162,13 @@ namespace Emmerre_Admin
             ChiamateInEntrata = sourcearray[44].Replace("<td class=\"c dropTD\"><div class=\"tdcon1\"><div class=\"tdcon2\"><a class=\"toolTip\" style=\"cursor:pointer\" onclick=\"callMonitoring()\" title=\"Click to see calls being placed\">", "").Replace("</a></div></div></td>", "");
             ChiamateInUscita = sourcearray[51].Replace("<td class=\"c dropTD\"><div class=\"tdcon1\"><div class=\"tdcon2\"><a class=\"toolTip\" style=\"cursor:pointer\" onclick=\"callMonitoring()\" title=\"Click to see calls being placed\">", "").Replace("</a></div></div></td>", "");
             //Numeritotali
-            String source2 = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_dashboard_leads").Replace("\t", "");
-            String[] sourcearray2 = source2.Split("\n".ToCharArray());
+            string source2 = tmpClient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_dashboard_leads").Replace("\t", "");
+            string[] sourcearray2 = source2.Split("\n".ToCharArray());
             NumeriDisponibiliDaChiamare = sourcearray2[37].Replace("<td class=\"c\"><a class=\"cur_hand\">", "").Replace("</a></td>", "");
             NumeriTotaliTutteListe = sourcearray2[41].Replace("<td class=\"c\"><a class=\"cur_hand\">", "").Replace("</a></td>", "");
             //Chiamaterispo e percentuale
-            String source3 = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_dashboard_drops_today").Replace("\t", "");
-            String[] sourcearray3 = source3.Split("\n".ToCharArray());
+            string source3 = tmpClient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_dashboard_drops_today").Replace("\t", "");
+            string[] sourcearray3 = source3.Split("\n".ToCharArray());
             PercentualeSaltate = sourcearray3[20].Replace("<td class=\"o dropTD\"><div class=\"tdcon1\"><div class=\"tdcon2\"><a class=\"toolTip\" style=\"cursor:pointer;font-size:50px;\" onclick=\"droppedCalls()\" title=\"Click to see the list of campaign dropped percentage\">", "").Replace("</a></div></div></td>", "");
             ChiamateSaltate = sourcearray3[28].Replace("<td class=\"c dropTD\"><div class=\"tdcon1\"><div class=\"tdcon2\"><a class=\"toolTip\" style=\"cursor:pointer\" onclick=\"droppedCalls()\" title=\"Click to see the list of campaign dropped calls\">", "").Replace("</a></div></div></td>", "");
             ChiamateRisposte = sourcearray3[36].Replace("<td class=\"c dropTD\"><div class=\"tdcon1\"><div class=\"tdcon2\"><a class=\"toolTip\" style=\"cursor:pointer\" onclick=\"droppedCalls()\" title=\"Click to see the list of campaign answered calls\">", "").Replace("</a></div></div></td>", "");
@@ -320,11 +348,179 @@ namespace Emmerre_Admin
                 RS_DettaglioAgentiTime = Timedetail;
             }
         }
-        public void RS_GetPerformanceAgente(string daData, string aData, string _campagna, string _type)
+        public void RS_GetDettaglioPerformanceAgente(string daData, string aData, string _campagna, string _type)
         {
             string source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_reports_output/agent_pdetail/" + daData + "/" + aData + "/" + _campagna + "/" + _type + "/");
-        }
 
+            int table1_0 = source.IndexOf("<!-- Start Agent Performance Detail -->");
+            int table1_1 = source.IndexOf("</table>", table1_0);
+            try
+            {
+                string table1 = source.Substring(table1_0 + 40, table1_1 - (table1_0 + 40));
+                table1 = table1.Replace("\t", "").Replace("  ", "").Replace("</tr>", "");
+                table1 = table1.Replace("<td nowrap style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"left\" class=\"style4\" style=\"font-size: 10px;\">&nbsp; ", "");
+                table1 = table1.Replace("<td nowrap style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"right\" class=\"style4\" style=\"font-size: 10px;\">&nbsp; ", "");
+                table1 = table1.Replace("<td nowrap style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"right\" class=\"style4\" style=\"font-size:10px\">&nbsp; ", "");
+                table1 = table1.Replace("<td nowrap><div align=\"center\" class=\"style4\"><strong> ", "");
+                int cut0 = table1.IndexOf("class=\"style2\">");
+                table1 = table1.Remove(0, cut0 + 17);
+                table1 = table1.Replace("&nbsp;", "").Replace(" &raquo; ", "").Replace("</b>", "");
+                table1 = table1.Replace("<td nowrap><div align=\"center\" class=\"style4\" title=\"", "").Replace("\"><strong>Avg </strong>", "").Replace(" </strong>", "").Replace("</strong>", "");
+                table1 = table1.Replace("<td nowrap style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"left\" class=\"style4\" style=\"font-size:10px\"><b>", "");
+                table1 = table1.Replace("<td nowrap style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"left\" class=\"style4\" style=\"font-size:10px\"> <strong>", "");
+                table1 = table1.Replace("\r\n", "").Replace("</div></td>\n<tr style", "\n<tr style").Replace(" </div></td>", ";").Replace("</div></td>", ";");
+                table1 = table1.Replace(";<tr style=\"background-color:#E0F8E0;\">", "@").Replace("<tr style=\"background-color:#E0F8E0;\">", "@");
+                table1 = table1.Replace("<tr style=\"background-color:#EFFBEF;\">", "@").Replace("<tr style=\"background-color:#FFFFFF;\">", "@").Replace("\n", "");
+                table1 = table1.Replace(" @", "@");
+                if(table1.Contains("Nessun agente trovato"))
+                {
+                    DettaglioPerformanceAgente1 = "@Nessun Agente Trovato.";
+                }
+                else
+                {
+                    DettaglioPerformanceAgente1 = table1;
+                }                
+            }
+            catch (Exception) { }
+
+
+            int table2_0 = source.IndexOf("<td nowrap><div align=\"center\" class=\"style4\"><strong> ", table1_1);
+            try
+            {
+                //SECONDA TABELLA CON ESITI che per comodita chiamerò solo table2
+                int table2_1 = source.IndexOf("</table>", table2_0);
+                string table2 = source.Substring(table2_0 + 55, table2_1 - (table2_0 + 55));
+                table2 = table2.Replace("\t", "").Replace("\r", "").Replace("  ", "").Replace("</strong>", "").Replace("<strong>", "").Replace("&nbsp; ", "").Replace("&nbsp;", "").Replace("</b>", "").Replace("<b>", "");
+                table2 = table2.Replace("<td nowrap><div align=\"center\" class=\"style4\">", "").Replace("<div align=\"left\" class=\"style4\" style=\"font-size: 10px;\">", "");
+                table2 = table2.Replace("<div align=\"right\" class=\"style4\" style=\"font-size: 10px;\">", "").Replace("<div align=\"right\" class=\"style4\" style=\"font-size:10px\">", "");
+                table2 = table2.Replace("<td nowrap style=\"border-top:dashed 1px #D0D0D0;\">", "").Replace("<div align=\"left\" class=\"style4\" style=\"font-size:10px\">", "");
+                table2 = table2.Replace("</tr><tr style=\"background-color:#FFFFFF;\">", "").Replace("<td style=\"border-top:#D0D0D0 dashed 1px;\">", "@");
+                table2 = table2.Replace("<td style=\"border-top:dashed 1px #D0D0D0;\">", "").Replace("</tr>\n<tr style=\"background-color:#E0F8E0;\">", "@");
+                table2 = table2.Replace("</tr><tr style=\"background-color:#EFFBEF;\">", "@").Replace(" </div></td>", ";").Replace("</tr><tr style=\"background-color:#E0F8E0;\">", "@"); ;
+                table2 = table2.Replace("</div></td>", ";").Replace("\n", "").Replace(";</tr>", "").Replace(";@", "@");
+                if (table2.Contains("Nessun agente trovato"))
+                {
+                    DettaglioPerformanceAgente2 = "Nessun Agente Trovato.@";
+                }
+                else
+                {
+                    DettaglioPerformanceAgente2 = table2;
+                }
+            }
+            catch (Exception) { }
+
+
+            try
+            {
+                //Tabella 3 con dettaglio esiti
+                int table3_0 = source.IndexOf("</td><td valign=\"top\" style=\"padding-left:10px;\">") + 49;
+                int table3_1 = source.IndexOf("</table>", table3_0);
+                string table3 = source.Substring(table3_0, table3_1 - table3_0);
+                table3 = table3.Replace("\t", "").Replace("  ", "").Replace("\r\n", "").Replace("&nbsp;&nbsp;", "Vuoto");
+                table3 = table3.Replace("<table border=\"0\" align=\"center\" cellpadding=\"1\" cellspacing=\"1\" style=\"border:#D0D0D0 solid 1px; -moz-border-radius:5px; -khtml-border-radius:5px; -webkit-border-radius:5px; border-radius:5px;\"><tr style=\"background-color:#FFFFFF;\">", "");
+                table3 = table3.Replace("&nbsp; ", "").Replace(" &nbsp;", "").Replace("<strong>", "").Replace("</strong>", "");
+                table3 = table3.Replace("<td nowrap><div align=\"center\" class=\"style4\">", "");
+                table3 = table3.Replace("</div></td></tr><tr style=\"background-color:#E0F8E0;\"><td nowrap style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"right\" class=\"style4\" style=\"font-size:10px\">", "\n");
+                table3 = table3.Replace("</div></td></tr><tr style=\"background-color:#EFFBEF;\"><td nowrap style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"right\" class=\"style4\" style=\"font-size:10px\">", "\n");
+                table3 = table3.Replace("</div></td></tr><tr style=\"background-color:#FFFFFF;\" class=\"style2\"><td nowrap style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"right\" class=\"style4\" style=\"font-size:10px\">", "\n");
+                table3 = table3.Replace("</div></td><td nowrap style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"right\" class=\"style4\" style=\"font-size:10px\">", ";");
+                table3 = table3.Replace("</div></td></tr>", "").Replace("</div></td>", ";");
+                if (table3.Contains("Nessun agente trovato"))
+                {
+                    DettaglioPerformanceAgente3 = "Nessun Agente Trovato.\n";
+                }
+                else
+                {
+                    DettaglioPerformanceAgente3 = table3;
+                }
+            }
+            catch (Exception) { }
+
+
+            try
+            {
+                int Legenda = source.IndexOf("LEGENDA:");
+                int table4_0 = source.IndexOf("<tr style=\"background-color:#FFFFFF;\" class=\"style2\">", Legenda) + 55;
+                int table4_1 = source.IndexOf("</table>", table4_0);
+                string table4 = source.Substring(table4_0, table4_1 - table4_0);
+                table4 = table4.Replace("  ", "").Replace("\r\n", "").Replace("\r","").Replace("\t","");
+                table4 = table4.Replace("<td nowrap><div align=\"center\" class=\"style4\"><strong> ", "").Replace("&nbsp;", "").Replace(" &nbsp;", "").Replace("<strong>", "").Replace("</strong>", "");
+                table4 = table4.Replace("<td nowrap style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"left\" class=\"style4\" style=\"font-size:10px\"> ", "");
+                table4 = table4.Replace("<td nowrap style=\"border-top:dashed 1px #D0D0D0;\"><div align=\"right\" class=\"style4\" style=\"font-size:10px\"> ", "");
+                table4 = table4.Replace(" </div></td></tr><tr style=\"background-color:#E0F8E0;\">", "@");
+                table4 = table4.Replace(" </div></td><td nowrap style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"left\" class=\"style4\" style=\"font-size:10px\"> ", ";");
+                table4 = table4.Replace(" </div></td><td nowrap style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"right\" class=\"style4\" style=\"font-size:10px\"> ", ";");
+                table4 = table4.Replace("</div></td></tr>", "").Replace("\n","").Replace(" </div></td></tr><tr style=\"background-color:#EFFBEF;\">","@");
+                table4 = table4.Replace(" </div></td></tr><tr style=\"background-color:#E0F8E0;\">", "@");
+                table4 = table4.Replace(" </div></td></tr><tr style=\"background-color:#FFFFFF;\"><td style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"left\" class=\"style4\" style=\"font-size:10px\"> ", "@");
+                table4 = table4.Replace(" </div></td>", ";").Replace("</div></td>", ";").Replace("@","\n");
+                if (table4.Contains("Nessun agente trovato"))
+                {
+                    DettaglioPerformanceAgente4 = "Nessun Agente Trovato.\n";
+                }
+                else
+                {
+                    DettaglioPerformanceAgente4 = table4;
+                }
+            }
+            catch (Exception) { }
+        }
+        public void RS_GetTracciatoVendite(string daData, string aData, string _campagna)
+        {
+            string source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_reports_output/sales_tracker/" + daData + "/" + aData + "/" + _campagna + "/outbound/");
+
+            try
+            {
+                int table1_0 = source.IndexOf("<!-- Start Sales Tracker Outbound/Inbound -->") + 47;
+                int table1_1 = source.IndexOf("</table>", table1_0);
+                string table1 = source.Substring(table1_0, table1_1 - table1_0);
+
+                if(table1.Contains("Nessun risultato Trovato"))
+                {
+                    TracciatoVendite1 = "\nNessun risultato Trovato.;";
+                    return;
+                }
+
+                table1 = table1.Replace("\t", "").Replace("  ", "").Replace("</tr>", "");
+                table1 = table1.Replace("<br style=\"font-size:15px\" />\r\n", "").Replace("<br style=\"font-size:5px\" />\r\n", "");
+                table1 = table1.Replace("<div align=\"center\" style=\"text-transform:uppercase;\" id=\"page_title\"><strong>:: outbound ::</strong></div>\r\n", "");
+                table1 = table1.Replace("<table width=\"600\" border=\"0\" align=\"center\" cellpadding=\"1\" cellspacing=\"0\" style=\"width:95%; border:#D0D0D0 solid 1px; -moz-border-radius:5px; -khtml-border-radius:5px; -webkit-border-radius:5px; border-radius:5px;\">\r\n", "");
+                table1 = table1.Replace("<tr class=\"style2\">\r\n", "");
+                //remove comments
+                while (table1.Contains("<!--") == true)
+                {
+                    int tmp0 = table1.IndexOf("<!--");
+                    int tmp1 = table1.IndexOf("-->", tmp0) + 3;
+                    table1 = table1.Remove(tmp0, tmp1 - tmp0);
+                }
+                table1 = table1.Replace("&nbsp;", "").Replace("\r\n\r\n", "\r\n").Replace("<td nowrap><div align=\"center\" class=\"style2\"><strong> ","");
+                table1 = table1.Replace("<td nowrap><div align=\"center\" class=\"style2\"><strong>", "");
+                table1 = table1.Replace("</strong></div></td>\r\n<tr", "\r\n<tr");
+
+                //Remove view info
+                while(table1.Contains("<td style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"center\" class=\"style2\"><img src=\""))
+                {
+                    int tmp0 = table1.IndexOf("<td style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"center\" class=\"style2\"><img src=\"");
+                    int tmp1 = table1.IndexOf("</div></td>", tmp0) + 13;
+                    table1 = table1.Remove(tmp0, tmp1 - tmp0);
+                }
+
+                table1 = table1.Replace("<td style=\"border-top:#D0D0D0 dashed 1px;\"><div align=\"center\" class=\"style2\">", "");
+                table1 = table1.Replace("<td style=\"text-transform:uppercase;border-top:#D0D0D0 dashed 1px;\"><div class=\"style2\" align=\"center\">", "");
+                table1 = table1.Replace(" </strong></div></td>\r\n", ";").Replace("</strong></div></td>\r\n", ";").Replace("\r\n", "");
+                table1 = table1.Replace("</div></td><tr style=\"background-color:#E0F8E0\">", "\n").Replace("</div></td><tr style=\"background-color:#EFFBEF\">","\n");
+                table1 = table1.Replace("<tr style=\"background-color:#E0F8E0\">", "\n").Replace("</div></td>",";");
+
+                TracciatoVendite1 = table1;
+            }
+            catch (Exception) { }
+        }
+        public string EsportaReport(string _daData, string _aData, string _Campagne, string _Liste, string _Esiti)
+        {
+            //https://37.59.165.125/index.php/go_site/go_export_reports/call_export_report/2019-03-13/2019-03-13/BSN+,--NONE--+,1000+,A+/YES,NONE,NO,NO,STANDARD/
+            string source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_export_reports/call_export_report/" + _daData + "/" + _aData + "/" + _Campagne + ",--NONE--+," + _Liste + "," + _Esiti + "/YES,NONE,NO,NO,STANDARD/");
+            return source;
+        }
 
 
         //##################### VOIP CARRIERS ################
@@ -518,6 +714,32 @@ namespace Emmerre_Admin
                 ReportAgentDetail[i] = AgentArray[i].Remove(0, 1);
             }
         }
+
+        public string[] GetTotalAgents()
+        {
+            CookieAwareWebClient tmpClient = new CookieAwareWebClient();
+            tmpClient.UseDefaultCredentials = true;
+            tmpClient.Credentials = new NetworkCredential(username, userpass);
+            string source = tmpClient.DownloadString("https://" + ipaddress + "/_vicidial_/admin.php?ADD=0A");
+
+            int ind0 = source.IndexOf("<center><TABLE width=750 cellspacing=0 cellpadding=1>") + 54;
+            int ind1 = source.IndexOf("</TABLE></center>", ind0) - 1;
+            string Agenti = source.Substring(ind0, ind1 - ind0);
+
+            Agenti = Agenti.Replace("<tr bgcolor=black><td><a href=\"/_vicidial_/admin.php?ADD=0A&status=&stage=USERIDDOWN\"><font size=1 color=white><B>USER ID</B></a></td><td><a href=\"/_vicidial_/admin.php?ADD=0A&status=&stage=NAMEDOWN\"><font size=1 color=white><B>FULL NAME</B></a></td><td><a href=\"/_vicidial_/admin.php?ADD=0A&status=&stage=LEVELDOWN\"><font size=1 color=white><B>LEVEL</B></a></td><td><a href=\"/_vicidial_/admin.php?ADD=0A&status=&stage=GROUPDOWN\"><font size=1 color=white><B>GROUP</B></a></td><td><font size=1 color=white><B>ACTIVE</B></td><td align=center><font size=1 color=white><B>LINKS</B></td></tr>\n", "");
+            Agenti = Agenti.Replace("<tr bgcolor=\"#9BB9FB\"><td><a href=\"/_vicidial_/admin.php?ADD=3&user=", "");
+            Agenti = Agenti.Replace("<tr bgcolor=\"#B9CBFD\"><td><a href=\"/_vicidial_/admin.php?ADD=3&user=", "");
+            Agenti = Agenti.Replace("\"><font size=1 color=black>", ";").Replace("</a></td><td><font size=1>", ";").Replace(" </td><td><font size=1>", ";").Replace("</td><td><font size=1>",";");
+
+            while(Agenti.IndexOf(";<CENTER>") > -1)
+            {
+                int ind00 = Agenti.IndexOf(";<CENTER>");
+                int ind01 = Agenti.IndexOf("</CENTER></td></tr>") + 19;
+                Agenti = Agenti.Remove(ind00, ind01 - ind00);
+            }
+            return Agenti.Split("\n".ToCharArray());
+        }
+
         public void GetAgents()
         {
             int page = 1;
@@ -932,14 +1154,25 @@ namespace Emmerre_Admin
         //Set Campagne Array with data
         public void GetCampagne()
         {
+            CookieAwareWebClient tmpClient = new CookieAwareWebClient();
+            tmpClient.BaseAddress = @"https://" + ipaddress;
+            // establish login data
+            var loginData = new NameValueCollection
+            {
+                { "user_name", username },
+                { "user_pass", userpass }
+            };
+            // begin login
+            tmpClient.UploadValues("/index.php/go_login/validate_credentials", "POST", loginData);
+
             int CurIndex = 0;
             //Clear global array
-            String source = webclient.DownloadString("https://" + ipaddress + "/reports");
+            string source = tmpClient.DownloadString("https://" + ipaddress + "/reports");
             //Find first id
             int index1 = source.IndexOf("<div id=\"campaign_ids\" class=\"go_campaign_menu\">");
             int index2 = source.IndexOf("</div>", index1);
             //Create array
-            String[] campaignArray = source.Substring(index1, index2 - index1).Replace("\t", "").Split("\n".ToCharArray());
+            string[] campaignArray = source.Substring(index1, index2 - index1).Replace("\t", "").Split("\n".ToCharArray());
             //Extract data
             for (int i = 0; i < campaignArray.Length; i++)
             {
@@ -950,6 +1183,42 @@ namespace Emmerre_Admin
                 }
             }
         }
+        public string[] GetCampagneFast()
+        {
+            CookieAwareWebClient tmpClient = new CookieAwareWebClient();
+            tmpClient.UseDefaultCredentials = true;
+            tmpClient.Credentials = new NetworkCredential(username, userpass);
+            try
+            {
+                string source = tmpClient.DownloadString("https://" + ipaddress + "/_vicidial_/admin.php?ADD=10");
+                int ind0 = source.IndexOf("<FONT FACE=\"ARIAL,HELVETICA\" COLOR=BLACK SIZE=2><br>CAMPAIGN LISTINGS:");
+                int ind00 = source.IndexOf("</B></td><td align=center><font size=1 color=white><B>MODIFY</B></td></tr>", ind0) + 75;
+                int ind1 = source.IndexOf("</TABLE></center>", ind00);
+                string Campagne = source.Substring(ind00, ind1 - ind00);
+                Campagne = Campagne.Replace("<tr bgcolor=\"#9BB9FB\"><td><font size=1><a href=\"/_vicidial_/admin.php?ADD=34&campaign_id=", "");
+                Campagne = Campagne.Replace("<tr bgcolor=\"#B9CBFD\"><td><font size=1><a href=\"/_vicidial_/admin.php?ADD=34&campaign_id=", "");
+                Campagne = Campagne.Replace("</a> &nbsp; </td><td><font size=1>", ";").Replace(" &nbsp; </td><td><font size=1>", ";");
+                Campagne = Campagne.Replace(" -</td><td><font size=1><a href=\"/_vicidial_/admin.php?ADD=31&campaign_id=", ";");
+                Campagne = Campagne.Replace("\">MODIFY</a></td></tr>", "").Replace("\">", ";");
+                Campagne = Campagne.Remove(Campagne.Length - 1, 1);
+                return Campagne.Split("\n".ToCharArray());
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+        public string[] GetCampagneDetailFast()
+        {
+            CookieAwareWebClient tmpClient = new CookieAwareWebClient();
+            tmpClient.UseDefaultCredentials = true;
+            tmpClient.Credentials = new NetworkCredential(username, userpass);
+            string Data = tmpClient.DownloadString("https://" + ipaddress + "/_vicidial_/AST_timeonVDADallSUMMARY.php?group=&RR=4&DB=0&adastats=&types=SHOW ALL CAMPAIGNS&file_download=1");
+            Data = Data.Replace(":\",\"", ":").Replace("\",\"",";").Replace("\"\n\"",";").Replace("\"","");
+            string[] Datas = Data.Split(new string[] { "\n\n" }, StringSplitOptions.RemoveEmptyEntries);
+            return Datas;
+        }
+
         public void GetCampagneDetiail()
         {
             try
@@ -1012,13 +1281,17 @@ namespace Emmerre_Admin
             webclient.DownloadString("https://" + ipaddress + "/index.php/go_campaign_ce/go_update_campaign_list/delete/" + CampagnaID);
             //Reload Campaign
         }
-        public void GetCampagnaSettings(String campagnaID)
+        public void GetCampagnaSettings(string campagnaID)
         {
-            String source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_campaign_ce/go_get_settings/" + campagnaID);
+            CookieAwareWebClient tmpClient = new CookieAwareWebClient();
+            tmpClient.CookieContainer.Add(webclient.CookieContainer.GetCookies(new Uri("https://" + ipaddress)));
+
+            string source = tmpClient.DownloadString("https://" + ipaddress + "/index.php/go_campaign_ce/go_get_settings/" + campagnaID);
             int json0 = source.IndexOf("var testVar = jQuery.parseJSON('{");
             int json1 = source.IndexOf("}');", json0);
-            String jsondata = source.Substring(json0 + 33, json1 - (json0 + 33)).Replace("\"", "");
+            string jsondata = source.Substring(json0 + 33, json1 - (json0 + 33)).Replace("\"", "");
             CampagnaSettings = jsondata.Split(",".ToCharArray());
+            tmpClient.Dispose();
         }
         public void ChangeCampagnaStatus(String CampagnaID, bool Stato)
         {
@@ -1102,17 +1375,20 @@ namespace Emmerre_Admin
         //##############################################           GESTIONE LISTE             #####################################################
         public void GetListe()//ListID + ";" + ListName + ";" + ListStatus + ";" + ListLastCall + ";" + ListLenght + ";" + ListCampaign;
         {
-            String source = webclient.DownloadString("https://" + ipaddress + "/go_list");
+            CookieAwareWebClient tmpClient = new CookieAwareWebClient();
+            tmpClient.CookieContainer.Add(webclient.CookieContainer.GetCookies(new Uri("https://" + ipaddress)));
+
+            string source = tmpClient.DownloadString("https://" + ipaddress + "/go_list");
             int listind0 = source.IndexOf("<!-- LISTs TAB -->");
             int listind1 = source.IndexOf("<!-- end view -->");
-            String Liste = source.Substring(listind0 + 18, listind1 - (listind0 + 18)).Replace("\r", "").Replace("\t", "").Replace(" ", "");
+            string Liste = source.Substring(listind0 + 18, listind1 - (listind0 + 18)).Replace("\r", "").Replace("\t", "").Replace(" ", "");
 
             //Try different pages
             int page = 1;
             int resultindex = -1;
             while (!Liste.Contains("Norecord(s)found!"))
             {
-                source = webclient.DownloadString("https://" + ipaddress + "/go_list/go_list/lists/" + page);
+                source = tmpClient.DownloadString("https://" + ipaddress + "/go_list/go_list/lists/" + page);
                 listind0 = source.IndexOf("<!-- LISTs TAB -->");
                 listind1 = source.IndexOf("<!-- end view -->");
                 Liste = source.Substring(listind0 + 18, listind1 - (listind0 + 18)).Replace("\r", "").Replace("\t", "").Replace(" ", "");
@@ -1124,39 +1400,46 @@ namespace Emmerre_Admin
                     {
                         int listid1 = Liste.IndexOf("\">-->", count + 20);
                         //Get ListID
-                        String ListID = Liste.Substring(count + 44, listid1 - (count + 44));
+                        string ListID = Liste.Substring(count + 44, listid1 - (count + 44));
                         //Get List Name
                         int listn0 = Liste.IndexOf("<tdcolspan=\"\"style=\"padding-bottom:-1px;\">\n", count);
                         int listn1 = Liste.IndexOf("</td>", listn0);
-                        String ListName = Liste.Substring(listn0 + 44, listn1 - (listn0 + 44));
+                        string ListName = Liste.Substring(listn0 + 44, listn1 - (listn0 + 44));
                         //Get List Status
                         int liststat0 = Liste.IndexOf("<b><fontcolor=", count);
                         int liststat1 = Liste.IndexOf(">", liststat0 + 10);
-                        String ListStatus = Liste.Substring(liststat0 + 14, liststat1 - (liststat0 + 14));
+                        string ListStatus = Liste.Substring(liststat0 + 14, liststat1 - (liststat0 + 14));
                         if (ListStatus == "red") { ListStatus = "NON ATTIVA"; } else { ListStatus = "ATTIVA"; }
                         //Get List Last Call
                         int lastcall0 = Liste.IndexOf("<tdalign=\"left\"style=\"padding-bottom:-1px;\">", liststat1);
                         int lastcall1 = Liste.IndexOf("</td>", lastcall0);
-                        String ListLastCall = Liste.Substring(lastcall0 + 45, lastcall1 - (lastcall0 + 45));
+                        string ListLastCall = Liste.Substring(lastcall0 + 45, lastcall1 - (lastcall0 + 45));
                         if (ListLastCall == "&nbsp;") { ListLastCall = "Nessuna"; }
                         ListLastCall = ListLastCall.Replace("&#150;", "-").Replace("&nbsp;", "");
                         //Get List Number Lenght
                         int listlen0 = Liste.IndexOf("<tdalign=\"left\"style=\"padding-bottom:-1px;\"><fontcolor=\"RED\"><b>", count);
                         int listlen1 = Liste.IndexOf("</b>", listlen0 + 60);
-                        String ListLenght = Liste.Substring(listlen0 + 64, listlen1 - (listlen0 + 64));
+                        string ListLenght = Liste.Substring(listlen0 + 64, listlen1 - (listlen0 + 64));
                         //Get List Campaign
                         int listcam0 = Liste.IndexOf("<tdalign=\"left\"style=\"padding-bottom:-1px;\">", listlen1);
                         int listcam1 = Liste.IndexOf("&nbsp;</td>", listcam0);
-                        String ListCampaign = Liste.Substring(listcam0 + 44, listcam1 - (listcam0 + 44));
+                        string ListCampaign = Liste.Substring(listcam0 + 44, listcam1 - (listcam0 + 44));
 
                         //Set Array with results
                         GetListEsiti(ListID);
                         //Load results
                         string[] esiti = ListEsitiArr;
-                        int indexfinal = esiti.Length - 2;
-                        string RemainNumbers = esiti[indexfinal].Split(";".ToCharArray())[2];
-
-                        Lists[resultindex] = ListID + ";" + ListName + ";" + ListStatus + ";" + ListLastCall + ";" + ListLenght + ";" + ListCampaign + ";" + RemainNumbers;
+                        if (esiti.Length > 1)
+                        {
+                            int indexfinal = esiti.Length - 2;
+                            string RemainNumbers = esiti[indexfinal].Split(";".ToCharArray())[2];
+                            Lists[resultindex] = ListID + ";" + ListName + ";" + ListStatus + ";" + ListLastCall + ";" + ListLenght + ";" + ListCampaign + ";" + RemainNumbers;
+                        }
+                        else
+                        {
+                            string RemainNumbers = "0";
+                            Lists[resultindex] = ListID + ";" + ListName + ";" + ListStatus + ";" + ListLastCall + ";" + ListLenght + ";" + ListCampaign + ";" + RemainNumbers;
+                        }
                     }
                     resultindex++;
                 }
@@ -1167,7 +1450,33 @@ namespace Emmerre_Admin
             {
                 LastListId = Lists[Lists.Length - 1].Split(";".ToCharArray())[0];
             }
+            tmpClient.Dispose();
         }
+        //GetListe No GoAutodial
+        public string[] GetListeFast()
+        {
+            CookieAwareWebClient tmpClient = new CookieAwareWebClient();
+            tmpClient.UseDefaultCredentials = true;
+            tmpClient.Credentials = new NetworkCredential(username, userpass);
+            string source = tmpClient.DownloadString("https://" + ipaddress + "/_vicidial_/admin.php?ADD=100");
+
+            int ind0 = source.IndexOf("color=white>MODIFY</TD>\n</TR>\n") + 30;
+            int ind1 = source.IndexOf("</TABLE></center>", ind0) - 1;
+            string liste = source.Substring(ind0, ind1 - ind0);
+            //Adjust
+            liste = liste.Replace("<tr bgcolor=\"#9BB9FB\"><td><font size=1><a href=\"/_vicidial_/admin.php?ADD=311&list_id=", "");
+            liste = liste.Replace("<tr bgcolor=\"#B9CBFD\"><td><font size=1><a href=\"/_vicidial_/admin.php?ADD=311&list_id=", "");
+            liste = liste.Replace("</td><td><font size=1><a href=\"/_vicidial_/admin.php?ADD=311&list_id=", ";").Replace("</a></td><td><font size=1> ",";");
+            liste = liste.Replace("</td><td><font size=1> ", ";").Replace("\">MODIFY</a></td></tr>","").Replace("\">",";");
+            string[] Liste = liste.Split("\n".ToCharArray());
+            //Set LastIndex
+            if(Liste.Length > 0)
+            {
+                LastListId = Liste[Liste.Length - 1].Split(";".ToCharArray())[0];
+            }
+            return Liste;
+        }
+        
         //Get List Detailed Information
         public void GetListDetails(String ListaID)
         {
@@ -1535,7 +1844,7 @@ namespace Emmerre_Admin
         }
         public void CreaLista(String _list_name, String _list_description, String _campaign_id)
         {
-            GetListe();
+            GetListeFast();
             //Calculate new ListID
             int listid = Convert.ToInt32(LastListId) + 1;
             LastListId = listid.ToString();
@@ -1743,7 +2052,18 @@ namespace Emmerre_Admin
             Byte[] Response = webclient.UploadValues("http://" + ipaddress + "/_vicidial_/lead_tools.php", "POST", reqparm);
             String data = ASCIIEncoding.ASCII.GetString(Response);
         }
+        public void GetEsitiList()
+        {
+            webclient.Credentials = new NetworkCredential(username, userpass);
+            String source = webclient.DownloadString("https://" + ipaddress + "/index.php/go_site/go_reports_output/call_export_report/");
 
+            int ind0 = source.IndexOf("<SELECT SIZE=15 ID=status multiple>") + 36;
+            int ind1 = source.IndexOf("</SELECT>", ind0) - 1;
+            string Esiti = source.Substring(ind0, ind1 - ind0);
+
+            Esiti = Esiti.Replace("<option value=\"", "").Replace("</option>", "").Replace("\">",";").Replace("\" selected>",";");
+            ListaEsiti = Esiti;
+        }
 
 
 
